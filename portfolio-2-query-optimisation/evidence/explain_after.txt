@@ -1,0 +1,182 @@
+=== Q1: Patient history by phone ===
+                                                                             QUERY PLAN                                                                              
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=67.34..67.36 rows=11 width=64) (actual time=0.197..0.198 rows=9 loops=1)
+   Sort Key: a.appointment_date DESC, a.start_time DESC
+   Sort Method: quicksort  Memory: 25kB
+   Buffers: shared hit=65 read=11
+   ->  Nested Loop  (cost=5.36..67.15 rows=11 width=64) (actual time=0.053..0.167 rows=9 loops=1)
+         Join Filter: (b.branch_id = a.branch_id)
+         Rows Removed by Join Filter: 13
+         Buffers: shared hit=57 read=11
+         ->  Nested Loop Left Join  (cost=5.36..65.70 rows=11 width=62) (actual time=0.047..0.157 rows=9 loops=1)
+               Buffers: shared hit=56 read=11
+               ->  Nested Loop  (cost=4.94..60.38 rows=11 width=43) (actual time=0.038..0.078 rows=9 loops=1)
+                     Buffers: shared hit=30 read=3
+                     ->  Nested Loop  (cost=4.80..58.65 rows=11 width=33) (actual time=0.033..0.065 rows=9 loops=1)
+                           Buffers: shared hit=12 read=3
+                           ->  Index Scan using idx_patients_phone on patients p  (cost=0.29..8.30 rows=1 width=4) (actual time=0.013..0.014 rows=1 loops=1)
+                                 Index Cond: ((phone)::text = '07030001234'::text)
+                                 Buffers: shared hit=1 read=2
+                           ->  Bitmap Heap Scan on appointments a  (cost=4.51..50.22 rows=12 width=37) (actual time=0.018..0.048 rows=9 loops=1)
+                                 Recheck Cond: (p.patient_id = patient_id)
+                                 Heap Blocks: exact=9
+                                 Buffers: shared hit=11 read=1
+                                 ->  Bitmap Index Scan on idx_appointments_patient_date  (cost=0.00..4.51 rows=12 width=0) (actual time=0.011..0.011 rows=9 loops=1)
+                                       Index Cond: (patient_id = p.patient_id)
+                                       Buffers: shared hit=2 read=1
+                     ->  Index Scan using staff_pkey on staff s  (cost=0.14..0.16 rows=1 width=18) (actual time=0.001..0.001 rows=1 loops=9)
+                           Index Cond: (staff_id = a.doctor_id)
+                           Buffers: shared hit=18
+               ->  Index Scan using idx_diagnoses_appointment on diagnoses d  (cost=0.42..0.47 rows=1 width=27) (actual time=0.008..0.008 rows=1 loops=9)
+                     Index Cond: (appointment_id = a.appointment_id)
+                     Buffers: shared hit=26 read=8
+         ->  Materialize  (cost=0.00..1.04 rows=3 width=10) (actual time=0.001..0.001 rows=2 loops=9)
+               Buffers: shared hit=1
+               ->  Seq Scan on branches b  (cost=0.00..1.03 rows=3 width=10) (actual time=0.003..0.003 rows=3 loops=1)
+                     Buffers: shared hit=1
+ Planning:
+   Buffers: shared hit=352 read=13
+ Planning Time: 1.032 ms
+ Execution Time: 0.246 ms
+(38 rows)
+
+=== Q2: Doctor schedule (uses existing partial index) ===
+                                                                     QUERY PLAN                                                                     
+----------------------------------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=73.88..73.90 rows=7 width=43) (actual time=0.065..0.066 rows=6 loops=1)
+   Sort Key: a.start_time
+   Sort Method: quicksort  Memory: 25kB
+   Buffers: shared hit=22 read=2
+   ->  Nested Loop  (cost=0.58..73.79 rows=7 width=43) (actual time=0.026..0.063 rows=6 loops=1)
+         Buffers: shared hit=22 read=2
+         ->  Index Scan using idx_appointments_date on appointments a  (cost=0.29..15.65 rows=7 width=33) (actual time=0.019..0.040 rows=6 loops=1)
+               Index Cond: (appointment_date = '2026-10-22'::date)
+               Filter: (((status)::text <> 'Cancelled'::text) AND (doctor_id = 5))
+               Rows Removed by Filter: 244
+               Buffers: shared hit=4 read=2
+         ->  Index Scan using patients_pkey on patients p  (cost=0.29..8.30 rows=1 width=18) (actual time=0.003..0.003 rows=1 loops=6)
+               Index Cond: (patient_id = a.patient_id)
+               Buffers: shared hit=18
+ Planning:
+   Buffers: shared hit=27
+ Planning Time: 0.128 ms
+ Execution Time: 0.074 ms
+(18 rows)
+
+=== Q7: Positive malaria tests, last 30 days ===
+                                                                                   QUERY PLAN                                                                                   
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=1576.34..1576.41 rows=30 width=54) (actual time=5.172..5.175 rows=72 loops=1)
+   Sort Key: a.appointment_date DESC
+   Sort Method: quicksort  Memory: 30kB
+   Buffers: shared hit=943 read=6
+   ->  Nested Loop  (cost=1306.84..1575.60 rows=30 width=54) (actual time=4.070..5.153 rows=72 loops=1)
+         Buffers: shared hit=943 read=6
+         ->  Nested Loop  (cost=1306.70..1574.36 rows=30 width=52) (actual time=4.064..5.126 rows=72 loops=1)
+               Buffers: shared hit=937 read=6
+               ->  Hash Join  (cost=1306.41..1558.50 rows=30 width=42) (actual time=4.056..4.953 rows=72 loops=1)
+                     Hash Cond: (a.appointment_id = lr.appointment_id)
+                     Buffers: shared hit=721 read=6
+                     ->  Index Scan Backward using idx_appointments_date on appointments a  (cost=0.29..228.28 rows=6349 width=16) (actual time=0.004..0.567 rows=6519 loops=1)
+                           Index Cond: ((appointment_date >= '2026-09-21'::date) AND (appointment_date <= '2026-10-21'::date))
+                           Buffers: shared hit=136 read=6
+                     ->  Hash  (cost=1292.79..1292.79 rows=1066 width=34) (actual time=4.030..4.032 rows=2169 loops=1)
+                           Buckets: 4096 (originally 2048)  Batches: 1 (originally 1)  Memory Usage: 177kB
+                           Buffers: shared hit=585
+                           ->  Hash Join  (cost=1.14..1292.79 rows=1066 width=34) (actual time=0.015..3.741 rows=2169 loops=1)
+                                 Hash Cond: (lr.test_id = t.test_id)
+                                 Buffers: shared hit=585
+                                 ->  Seq Scan on lab_requests lr  (cost=0.00..1251.80 rows=10665 width=23) (actual time=0.004..3.162 rows=10686 loops=1)
+                                       Filter: (result = 'Positive'::text)
+                                       Rows Removed by Filter: 42738
+                                       Buffers: shared hit=584
+                                 ->  Hash  (cost=1.12..1.12 rows=1 width=19) (actual time=0.007..0.007 rows=2 loops=1)
+                                       Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                       Buffers: shared hit=1
+                                       ->  Seq Scan on lab_tests t  (cost=0.00..1.12 rows=1 width=19) (actual time=0.001..0.002 rows=2 loops=1)
+                                             Filter: ((name)::text ~~ 'Malaria%'::text)
+                                             Rows Removed by Filter: 8
+                                             Buffers: shared hit=1
+               ->  Index Scan using patients_pkey on patients p  (cost=0.29..0.53 rows=1 width=18) (actual time=0.002..0.002 rows=1 loops=72)
+                     Index Cond: (patient_id = a.patient_id)
+                     Buffers: shared hit=216
+         ->  Memoize  (cost=0.14..0.16 rows=1 width=10) (actual time=0.000..0.000 rows=1 loops=72)
+               Cache Key: a.branch_id
+               Cache Mode: logical
+               Hits: 69  Misses: 3  Evictions: 0  Overflows: 0  Memory Usage: 1kB
+               Buffers: shared hit=6
+               ->  Index Scan using branches_pkey on branches b  (cost=0.13..0.15 rows=1 width=10) (actual time=0.001..0.001 rows=1 loops=3)
+                     Index Cond: (branch_id = a.branch_id)
+                     Buffers: shared hit=6
+ Planning:
+   Buffers: shared hit=134 read=4
+ Planning Time: 0.466 ms
+ Execution Time: 5.201 ms
+(46 rows)
+
+=== Q9: Recall list (anti-join) ===
+                                                                         QUERY PLAN                                                                          
+-------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=4920.15..4920.16 rows=1 width=8) (actual time=17.438..17.438 rows=1 loops=1)
+   Buffers: shared hit=1344 read=73
+   ->  Hash Right Anti Join  (cost=748.30..4918.44 rows=686 width=0) (actual time=17.221..17.428 rows=195 loops=1)
+         Hash Cond: (a.patient_id = p.patient_id)
+         Buffers: shared hit=1344 read=73
+         ->  Index Scan using idx_appointments_date on appointments a  (cost=0.29..2960.36 rows=90518 width=4) (actual time=0.019..7.661 rows=89817 loops=1)
+               Index Cond: (appointment_date > '2025-10-21'::date)
+               Buffers: shared hit=1046 read=73
+         ->  Hash  (cost=498.00..498.00 rows=20000 width=4) (actual time=2.347..2.347 rows=20000 loops=1)
+               Buckets: 32768  Batches: 1  Memory Usage: 960kB
+               Buffers: shared hit=298
+               ->  Seq Scan on patients p  (cost=0.00..498.00 rows=20000 width=4) (actual time=0.002..1.058 rows=20000 loops=1)
+                     Buffers: shared hit=298
+ Planning:
+   Buffers: shared hit=17
+ Planning Time: 0.094 ms
+ Execution Time: 17.520 ms
+(17 rows)
+
+=== Q10: Patient history through the view ===
+                                                                                       QUERY PLAN                                                                                       
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=1.13..71.83 rows=5 width=69) (actual time=0.026..0.047 rows=5 loops=1)
+   Buffers: shared hit=32
+   ->  Nested Loop Left Join  (cost=1.13..170.82 rows=12 width=69) (actual time=0.025..0.046 rows=5 loops=1)
+         Buffers: shared hit=32
+         ->  Nested Loop  (cost=0.71..69.39 rows=12 width=37) (actual time=0.023..0.032 rows=5 loops=1)
+               Join Filter: (b.branch_id = a.branch_id)
+               Rows Removed by Join Filter: 8
+               Buffers: shared hit=13
+               ->  Nested Loop  (cost=0.71..67.90 rows=12 width=35) (actual time=0.021..0.029 rows=5 loops=1)
+                     Join Filter: (s.staff_id = a.doctor_id)
+                     Rows Removed by Join Filter: 65
+                     Buffers: shared hit=12
+                     ->  Nested Loop  (cost=0.71..57.09 rows=12 width=25) (actual time=0.007..0.012 rows=5 loops=1)
+                           Buffers: shared hit=11
+                           ->  Index Scan Backward using idx_appointments_patient_date on appointments a  (cost=0.42..52.63 rows=12 width=29) (actual time=0.004..0.007 rows=5 loops=1)
+                                 Index Cond: (patient_id = 1234)
+                                 Buffers: shared hit=8
+                           ->  Materialize  (cost=0.29..4.31 rows=1 width=4) (actual time=0.001..0.001 rows=1 loops=5)
+                                 Buffers: shared hit=3
+                                 ->  Index Only Scan using patients_pkey on patients p  (cost=0.29..4.30 rows=1 width=4) (actual time=0.002..0.002 rows=1 loops=1)
+                                       Index Cond: (patient_id = 1234)
+                                       Heap Fetches: 0
+                                       Buffers: shared hit=3
+                     ->  Materialize  (cost=0.00..1.77 rows=51 width=18) (actual time=0.001..0.002 rows=14 loops=5)
+                           Buffers: shared hit=1
+                           ->  Seq Scan on staff s  (cost=0.00..1.51 rows=51 width=18) (actual time=0.003..0.005 rows=30 loops=1)
+                                 Buffers: shared hit=1
+               ->  Materialize  (cost=0.00..1.04 rows=3 width=10) (actual time=0.000..0.000 rows=3 loops=5)
+                     Buffers: shared hit=1
+                     ->  Seq Scan on branches b  (cost=0.00..1.03 rows=3 width=10) (actual time=0.001..0.001 rows=3 loops=1)
+                           Buffers: shared hit=1
+         ->  Index Scan using idx_diagnoses_appointment on diagnoses d  (cost=0.42..8.44 rows=1 width=22) (actual time=0.002..0.002 rows=1 loops=5)
+               Index Cond: (appointment_id = a.appointment_id)
+               Buffers: shared hit=19
+ Planning:
+   Buffers: shared hit=24
+ Planning Time: 0.376 ms
+ Execution Time: 0.063 ms
+(38 rows)
+

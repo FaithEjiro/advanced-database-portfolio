@@ -1,0 +1,345 @@
+-- =====================================================
+-- CarePoint: Business queries (Portfolio 2)
+-- Snapshot date: 2026-10-21
+-- =====================================================
+\timing on
+Timing is on.
+ 
+-- Pick a real patient's phone number to search with (as a receptionist would)
+SELECT phone AS pphone FROM patients WHERE patient_id = 1234 \gset
+Time: 0.632 ms
+\echo 'Searching for patient with phone:' :pphone
+Searching for patient with phone: 07030001234
+ 
+-- Q1: Full visit history for a patient, searched by phone number
+SELECT a.appointment_date, a.start_time, b.name AS branch,
+       s.first_name || ' ' || s.last_name AS doctor,
+       a.status, d.icd10_code, d.description AS diagnosis
+FROM patients p
+JOIN appointments a ON a.patient_id = p.patient_id
+JOIN staff s        ON s.staff_id   = a.doctor_id
+JOIN branches b     ON b.branch_id  = a.branch_id
+LEFT JOIN diagnoses d ON d.appointment_id = a.appointment_id
+WHERE p.phone = :'pphone'
+ORDER BY a.appointment_date DESC, a.start_time DESC;
+ appointment_date | start_time | branch  |     doctor      |  status   | icd10_code |       diagnosis        
+------------------+------------+---------+-----------------+-----------+------------+------------------------
+ 2026-11-11       | 14:30:00   | Maitama | Chinedu Usman   | Booked    |            | 
+ 2026-08-24       | 10:00:00   | Garki   | Uche Bello      | Completed | A01.0      | Typhoid fever
+ 2025-02-15       | 10:30:00   | Garki   | Ikenna Adebayo  | Completed | A01.0      | Typhoid fever
+ 2024-12-19       | 12:30:00   | Maitama | Musa Nnamdi     | Completed | A01.0      | Typhoid fever
+ 2024-08-24       | 12:30:00   | Maitama | Amaka Okonkwo   | Completed | I10        | Essential hypertension
+ 2024-08-10       | 10:30:00   | Garki   | Olumide Obi     | Completed | M54.5      | Low back pain
+ 2024-03-28       | 09:00:00   | Maitama | Segun Garba     | Completed | K29.7      | Gastritis
+ 2024-03-15       | 14:00:00   | Maitama | Zainab Mohammed | Completed | M54.5      | Low back pain
+ 2024-01-27       | 10:00:00   | Wuse    | Obinna Usman    | No-show   |            | 
+(9 rows)
+
+Time: 1.670 ms
+ 
+-- Q2: Doctor 5's schedule for tomorrow (active appointments only)
+SELECT a.start_time, p.first_name || ' ' || p.last_name AS patient,
+       a.reason, a.status
+FROM appointments a
+JOIN patients p ON p.patient_id = a.patient_id
+WHERE a.doctor_id = 5
+  AND a.appointment_date = DATE '2026-10-22'
+  AND a.status <> 'Cancelled'
+ORDER BY a.start_time;
+ start_time |    patient     |        reason         | status 
+------------+----------------+-----------------------+--------
+ 09:30:00   | Chinedu Nnamdi | Antenatal visit       | Booked
+ 11:30:00   | Tunde Abubakar | Blood pressure review | Booked
+ 12:00:00   | Zainab Nnamdi  | Follow-up             | Booked
+ 14:00:00   | Halima Olawale | Routine check-up      | Booked
+ 14:30:00   | Halima Adeyemi | Blood pressure review | Booked
+ 15:00:00   | Chioma Nwosu   | Blood pressure review | Booked
+(6 rows)
+
+Time: 0.422 ms
+ 
+-- Q3: Monthly revenue per branch in 2025 (NGN)
+SELECT date_trunc('month', pay.paid_at)::date AS month, b.name AS branch,
+       count(*) AS payments, sum(pay.amount) AS revenue_ngn
+FROM payments pay
+JOIN appointments a ON a.appointment_id = pay.appointment_id
+JOIN branches b     ON b.branch_id = a.branch_id
+WHERE pay.paid_at >= '2025-01-01' AND pay.paid_at < '2026-01-01'
+GROUP BY 1, 2
+ORDER BY 1, 2;
+   month    | branch  | payments | revenue_ngn 
+------------+---------+----------+-------------
+ 2025-01-01 | Garki   |     1813 | 12090000.00
+ 2025-01-01 | Maitama |     1822 | 12376000.00
+ 2025-01-01 | Wuse    |     1818 | 12311000.00
+ 2025-02-01 | Garki   |     1641 | 10870000.00
+ 2025-02-01 | Maitama |     1635 | 10765000.00
+ 2025-02-01 | Wuse    |     1662 | 11244000.00
+ 2025-03-01 | Garki   |     1818 | 12285000.00
+ 2025-03-01 | Maitama |     1743 | 11593000.00
+ 2025-03-01 | Wuse    |     1763 | 12214500.00
+ 2025-04-01 | Garki   |     1768 | 11882500.00
+ 2025-04-01 | Maitama |     1808 | 12085000.00
+ 2025-04-01 | Wuse    |     1746 | 12107500.00
+ 2025-05-01 | Garki   |     1874 | 12627500.00
+ 2025-05-01 | Maitama |     1777 | 11985000.00
+ 2025-05-01 | Wuse    |     1802 | 12326500.00
+ 2025-06-01 | Garki   |     1714 | 11559000.00
+ 2025-06-01 | Maitama |     1704 | 11218500.00
+ 2025-06-01 | Wuse    |     1738 | 11445000.00
+ 2025-07-01 | Garki   |     1848 | 12339500.00
+ 2025-07-01 | Maitama |     1837 | 12476500.00
+ 2025-07-01 | Wuse    |     1838 | 12462000.00
+ 2025-08-01 | Garki   |     1755 | 11933500.00
+ 2025-08-01 | Maitama |     1745 | 11750000.00
+ 2025-08-01 | Wuse    |     1734 | 11806500.00
+ 2025-09-01 | Garki   |     1753 | 11943000.00
+ 2025-09-01 | Maitama |     1843 | 12524000.00
+ 2025-09-01 | Wuse    |     1691 | 11325500.00
+ 2025-10-01 | Garki   |     1863 | 12561500.00
+ 2025-10-01 | Maitama |     1856 | 12561000.00
+ 2025-10-01 | Wuse    |     1860 | 12486500.00
+ 2025-11-01 | Garki   |     1724 | 11610000.00
+ 2025-11-01 | Maitama |     1714 | 11477000.00
+ 2025-11-01 | Wuse    |     1696 | 11761000.00
+ 2025-12-01 | Garki   |     1848 | 12594000.00
+ 2025-12-01 | Maitama |     1822 | 12335500.00
+ 2025-12-01 | Wuse    |     1829 | 12413000.00
+(36 rows)
+
+Time: 57.276 ms
+ 
+-- Q4: Top 5 diagnoses in 2025 with percentage share
+SELECT icd10_code, description, count(*) AS cases,
+       round(100.0 * count(*) / sum(count(*)) OVER (), 1) AS pct_of_all
+FROM diagnoses
+WHERE diagnosed_at >= '2025-01-01' AND diagnosed_at < '2026-01-01'
+GROUP BY icd10_code, description
+ORDER BY cases DESC
+LIMIT 5;
+ icd10_code |       description        | cases | pct_of_all 
+------------+--------------------------+-------+------------
+ K29.7      | Gastritis                |  6435 |       10.1
+ L30.9      | Dermatitis               |  6409 |       10.0
+ E11.9      | Type 2 diabetes mellitus |  6407 |       10.0
+ A01.0      | Typhoid fever            |  6402 |       10.0
+ I10        | Essential hypertension   |  6398 |       10.0
+(5 rows)
+
+Time: 11.895 ms
+ 
+-- Q5: Top 10 doctors by completed appointments in 2025
+SELECT s.first_name || ' ' || s.last_name AS doctor, s.specialisation,
+       b.name AS branch, count(*) AS completed,
+       RANK() OVER (ORDER BY count(*) DESC) AS workload_rank
+FROM appointments a
+JOIN staff s    ON s.staff_id  = a.doctor_id
+JOIN branches b ON b.branch_id = s.branch_id
+WHERE a.status = 'Completed'
+  AND a.appointment_date BETWEEN '2025-01-01' AND '2025-12-31'
+GROUP BY s.staff_id, s.first_name, s.last_name, s.specialisation, b.name
+ORDER BY workload_rank
+LIMIT 10;
+     doctor      |      specialisation      | branch  | completed | workload_rank 
+-----------------+--------------------------+---------+-----------+---------------
+ Zainab Mohammed | Obstetrics & Gynaecology | Maitama |      2205 |             1
+ Obinna Usman    | Dermatology              | Wuse    |      2202 |             2
+ Folake Olawale  | General Practice         | Maitama |      2198 |             3
+ Halima Chukwu   | Paediatrics              | Maitama |      2169 |             4
+ Ifeoma Ogunleye | Paediatrics              | Garki   |      2164 |             5
+ Uche Bello      | Paediatrics              | Garki   |      2163 |             6
+ Nkechi Nwosu    | Obstetrics & Gynaecology | Garki   |      2162 |             7
+ Kunle Mohammed  | Obstetrics & Gynaecology | Garki   |      2156 |             8
+ Olumide Obi     | Dermatology              | Garki   |      2154 |             9
+ Adaeze Nnamdi   | Internal Medicine        | Garki   |      2152 |            10
+(10 rows)
+
+Time: 23.787 ms
+ 
+-- Q6: No-show and cancellation rates per branch (past appointments)
+SELECT b.name AS branch, count(*) AS total,
+       count(*) FILTER (WHERE a.status = 'No-show')   AS no_shows,
+       round(100.0 * count(*) FILTER (WHERE a.status = 'No-show') / count(*), 1)   AS no_show_pct,
+       count(*) FILTER (WHERE a.status = 'Cancelled') AS cancelled,
+       round(100.0 * count(*) FILTER (WHERE a.status = 'Cancelled') / count(*), 1) AS cancel_pct
+FROM appointments a
+JOIN branches b ON b.branch_id = a.branch_id
+WHERE a.appointment_date <= DATE '2026-10-21'
+GROUP BY b.name
+ORDER BY b.name;
+ branch  | total | no_shows | no_show_pct | cancelled | cancel_pct 
+---------+-------+----------+-------------+-----------+------------
+ Garki   | 70156 |     4858 |         6.9 |      5660 |        8.1
+ Maitama | 70136 |     5095 |         7.3 |      5672 |        8.1
+ Wuse    | 70130 |     5052 |         7.2 |      5489 |        7.8
+(3 rows)
+
+Time: 33.561 ms
+ 
+-- Q7: Positive malaria tests in the last 30 days
+SELECT a.appointment_date, b.name AS branch,
+       p.first_name || ' ' || p.last_name AS patient, t.name AS test, lr.result
+FROM lab_requests lr
+JOIN lab_tests t     ON t.test_id = lr.test_id
+JOIN appointments a  ON a.appointment_id = lr.appointment_id
+JOIN patients p      ON p.patient_id = a.patient_id
+JOIN branches b      ON b.branch_id = a.branch_id
+WHERE lr.result = 'Positive'
+  AND t.name LIKE 'Malaria%'
+  AND a.appointment_date BETWEEN DATE '2026-10-21' - 30 AND DATE '2026-10-21'
+ORDER BY a.appointment_date DESC;
+ appointment_date | branch  |      patient      |            test             |  result  
+------------------+---------+-------------------+-----------------------------+----------
+ 2026-10-21       | Maitama | Obinna Garba      | Malaria parasite microscopy | Positive
+ 2026-10-21       | Maitama | Zainab Okonkwo    | Malaria parasite microscopy | Positive
+ 2026-10-20       | Wuse    | Tunde Garba       | Malaria RDT                 | Positive
+ 2026-10-20       | Wuse    | Zainab Olawale    | Malaria RDT                 | Positive
+ 2026-10-20       | Wuse    | Ngozi Ogunleye    | Malaria RDT                 | Positive
+ 2026-10-20       | Wuse    | Halima Mohammed   | Malaria RDT                 | Positive
+ 2026-10-19       | Maitama | Aisha Nwosu       | Malaria parasite microscopy | Positive
+ 2026-10-19       | Maitama | Zainab Okonkwo    | Malaria parasite microscopy | Positive
+ 2026-10-19       | Wuse    | Yusuf Olawale     | Malaria RDT                 | Positive
+ 2026-10-17       | Wuse    | Obinna Abubakar   | Malaria RDT                 | Positive
+ 2026-10-16       | Wuse    | Chioma Adeyemi    | Malaria parasite microscopy | Positive
+ 2026-10-16       | Wuse    | Zainab Lawal      | Malaria parasite microscopy | Positive
+ 2026-10-15       | Maitama | Halima Nwosu      | Malaria RDT                 | Positive
+ 2026-10-15       | Garki   | Amaka Adebayo     | Malaria RDT                 | Positive
+ 2026-10-14       | Maitama | Chinedu Ogunleye  | Malaria parasite microscopy | Positive
+ 2026-10-14       | Garki   | Babajide Lawal    | Malaria RDT                 | Positive
+ 2026-10-13       | Wuse    | Yetunde Obi       | Malaria RDT                 | Positive
+ 2026-10-12       | Garki   | Ikenna Nnamdi     | Malaria parasite microscopy | Positive
+ 2026-10-12       | Maitama | Folake Adebayo    | Malaria parasite microscopy | Positive
+ 2026-10-12       | Garki   | Yetunde Obi       | Malaria parasite microscopy | Positive
+ 2026-10-10       | Maitama | Ngozi Adebayo     | Malaria RDT                 | Positive
+ 2026-10-10       | Maitama | Tunde Afolabi     | Malaria RDT                 | Positive
+ 2026-10-10       | Wuse    | Ibrahim Abubakar  | Malaria parasite microscopy | Positive
+ 2026-10-10       | Garki   | Chioma Usman      | Malaria RDT                 | Positive
+ 2026-10-09       | Garki   | Babajide Afolabi  | Malaria parasite microscopy | Positive
+ 2026-10-09       | Maitama | Halima Olawale    | Malaria RDT                 | Positive
+ 2026-10-09       | Maitama | Hauwa Danjuma     | Malaria parasite microscopy | Positive
+ 2026-10-08       | Maitama | Ngozi Abubakar    | Malaria parasite microscopy | Positive
+ 2026-10-08       | Maitama | Amaka Chukwu      | Malaria parasite microscopy | Positive
+ 2026-10-08       | Garki   | Uche Okafor       | Malaria parasite microscopy | Positive
+ 2026-10-07       | Garki   | Babajide Mohammed | Malaria parasite microscopy | Positive
+ 2026-10-07       | Wuse    | Chioma Ogunleye   | Malaria parasite microscopy | Positive
+ 2026-10-06       | Wuse    | Yetunde Chukwu    | Malaria RDT                 | Positive
+ 2026-10-06       | Maitama | Chinedu Obi       | Malaria parasite microscopy | Positive
+ 2026-10-06       | Maitama | Kunle Mohammed    | Malaria parasite microscopy | Positive
+ 2026-10-06       | Garki   | Fatima Garba      | Malaria RDT                 | Positive
+ 2026-10-05       | Maitama | Funmilayo Garba   | Malaria RDT                 | Positive
+ 2026-10-05       | Maitama | Obinna Garba      | Malaria parasite microscopy | Positive
+ 2026-10-03       | Garki   | Ikenna Olawale    | Malaria parasite microscopy | Positive
+ 2026-10-03       | Maitama | Chioma Olawale    | Malaria RDT                 | Positive
+ 2026-10-02       | Maitama | Fatima Okafor     | Malaria parasite microscopy | Positive
+ 2026-10-01       | Wuse    | Kunle Ogunleye    | Malaria parasite microscopy | Positive
+ 2026-10-01       | Wuse    | Abdullahi Okafor  | Malaria RDT                 | Positive
+ 2026-10-01       | Wuse    | Musa Mohammed     | Malaria RDT                 | Positive
+ 2026-09-30       | Garki   | Yusuf Chukwu      | Malaria RDT                 | Positive
+ 2026-09-30       | Wuse    | Ngozi Ogunleye    | Malaria parasite microscopy | Positive
+ 2026-09-30       | Wuse    | Yusuf Adebayo     | Malaria parasite microscopy | Positive
+ 2026-09-30       | Maitama | Musa Garba        | Malaria parasite microscopy | Positive
+ 2026-09-29       | Wuse    | Ifeoma Ibrahim    | Malaria RDT                 | Positive
+ 2026-09-29       | Garki   | Folake Mohammed   | Malaria RDT                 | Positive
+ 2026-09-29       | Maitama | Chioma Afolabi    | Malaria parasite microscopy | Positive
+ 2026-09-29       | Garki   | Nkechi Adebayo    | Malaria RDT                 | Positive
+ 2026-09-29       | Wuse    | Fatima Abubakar   | Malaria RDT                 | Positive
+ 2026-09-29       | Maitama | Musa Bello        | Malaria RDT                 | Positive
+ 2026-09-29       | Maitama | Tunde Lawal       | Malaria RDT                 | Positive
+ 2026-09-28       | Garki   | Ibrahim Okonkwo   | Malaria parasite microscopy | Positive
+ 2026-09-28       | Garki   | Yusuf Mohammed    | Malaria parasite microscopy | Positive
+ 2026-09-26       | Garki   | Olumide Bello     | Malaria RDT                 | Positive
+ 2026-09-26       | Maitama | Yetunde Usman     | Malaria parasite microscopy | Positive
+ 2026-09-26       | Wuse    | Funmilayo Olawale | Malaria parasite microscopy | Positive
+ 2026-09-25       | Maitama | Amaka Okonkwo     | Malaria parasite microscopy | Positive
+ 2026-09-25       | Garki   | Ngozi Lawal       | Malaria RDT                 | Positive
+ 2026-09-25       | Maitama | Yetunde Nwosu     | Malaria parasite microscopy | Positive
+ 2026-09-25       | Maitama | Adaeze Lawal      | Malaria parasite microscopy | Positive
+ 2026-09-25       | Maitama | Halima Bello      | Malaria RDT                 | Positive
+ 2026-09-25       | Maitama | Yusuf Chukwu      | Malaria parasite microscopy | Positive
+ 2026-09-23       | Garki   | Yetunde Abubakar  | Malaria RDT                 | Positive
+ 2026-09-23       | Garki   | Ikenna Adebayo    | Malaria RDT                 | Positive
+ 2026-09-23       | Wuse    | Ibrahim Adeyemi   | Malaria parasite microscopy | Positive
+ 2026-09-23       | Wuse    | Uche Mohammed     | Malaria RDT                 | Positive
+ 2026-09-22       | Maitama | Babajide Danjuma  | Malaria parasite microscopy | Positive
+ 2026-09-22       | Wuse    | Fatima Usman      | Malaria parasite microscopy | Positive
+(72 rows)
+
+Time: 5.424 ms
+ 
+-- Q8: Top 3 medications by dispensed value per branch in 2025
+SELECT branch, medication, units, value_ngn
+FROM (
+  SELECT b.name AS branch, m.name AS medication,
+         sum(pi.quantity) AS units,
+         sum(pi.quantity * m.unit_price) AS value_ngn,
+         ROW_NUMBER() OVER (PARTITION BY b.name
+                            ORDER BY sum(pi.quantity * m.unit_price) DESC) AS rn
+  FROM prescription_items pi
+  JOIN medications m   ON m.medication_id = pi.medication_id
+  JOIN prescriptions pr ON pr.prescription_id = pi.prescription_id
+  JOIN appointments a  ON a.appointment_id = pr.appointment_id
+  JOIN branches b      ON b.branch_id = a.branch_id
+  WHERE pr.issued_at >= '2025-01-01' AND pr.issued_at < '2026-01-01'
+  GROUP BY b.name, m.name
+) ranked
+WHERE rn <= 3
+ORDER BY branch, rn;
+ branch  |       medication        | units |  value_ngn  
+---------+-------------------------+-------+-------------
+ Garki   | Ceftriaxone             | 10829 | 27072500.00
+ Garki   | Hydrocortisone          | 28818 | 25936200.00
+ Garki   | Artemether/Lumefantrine | 11501 | 17251500.00
+ Maitama | Ceftriaxone             | 11076 | 27690000.00
+ Maitama | Hydrocortisone          | 28795 | 25915500.00
+ Maitama | Artemether/Lumefantrine | 10813 | 16219500.00
+ Wuse    | Ceftriaxone             | 11476 | 28690000.00
+ Wuse    | Hydrocortisone          | 29699 | 26729100.00
+ Wuse    | Artemether/Lumefantrine | 11070 | 16605000.00
+(9 rows)
+
+Time: 56.122 ms
+ 
+-- Q9: Recall list: patients with no appointment in the last 12 months
+SELECT count(*) AS patients_to_recall
+FROM patients p
+WHERE NOT EXISTS (
+  SELECT 1 FROM appointments a
+  WHERE a.patient_id = p.patient_id
+    AND a.appointment_date > DATE '2026-10-21' - 365
+);
+ patients_to_recall 
+--------------------
+                195
+(1 row)
+
+Time: 12.900 ms
+ 
+-- Q10: Reusable view of patient visits, then use it
+CREATE OR REPLACE VIEW v_patient_visits AS
+SELECT p.patient_id, p.first_name || ' ' || p.last_name AS patient,
+       a.appointment_id, a.appointment_date, b.name AS branch,
+       s.first_name || ' ' || s.last_name AS doctor, a.status,
+       d.description AS diagnosis
+FROM patients p
+JOIN appointments a ON a.patient_id = p.patient_id
+JOIN staff s        ON s.staff_id   = a.doctor_id
+JOIN branches b     ON b.branch_id  = a.branch_id
+LEFT JOIN diagnoses d ON d.appointment_id = a.appointment_id;
+CREATE VIEW
+Time: 4.435 ms
+ 
+SELECT appointment_date, branch, doctor, status, diagnosis
+FROM v_patient_visits
+WHERE patient_id = 1234
+ORDER BY appointment_date DESC
+LIMIT 5;
+ appointment_date | branch  |     doctor     |  status   |       diagnosis        
+------------------+---------+----------------+-----------+------------------------
+ 2026-11-11       | Maitama | Chinedu Usman  | Booked    | 
+ 2026-08-24       | Garki   | Uche Bello     | Completed | Typhoid fever
+ 2025-02-15       | Garki   | Ikenna Adebayo | Completed | Typhoid fever
+ 2024-12-19       | Maitama | Musa Nnamdi    | Completed | Typhoid fever
+ 2024-08-24       | Maitama | Amaka Okonkwo  | Completed | Essential hypertension
+(5 rows)
+
+Time: 0.856 ms

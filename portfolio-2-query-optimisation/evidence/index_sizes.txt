@@ -1,0 +1,19 @@
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+ANALYZE
+          index_name           |  table_name   |  size   
+-------------------------------+---------------+---------
+ idx_appointments_patient_date | appointments  | 4960 kB
+ idx_diagnoses_appointment     | diagnoses     | 3936 kB
+ idx_payments_appointment      | payments      | 3936 kB
+ idx_prescriptions_appointment | prescriptions | 2384 kB
+ idx_appointments_date         | appointments  | 1592 kB
+ idx_lab_requests_appointment  | lab_requests  | 1184 kB
+ idx_patients_phone            | patients      | 632 kB
+(7 rows)
+
