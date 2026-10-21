@@ -1,0 +1,19 @@
+     table_name     | count  
+--------------------+--------
+ branches           |      3
+ departments        |      8
+ staff              |     51
+ patients           |  20000
+ lab_requests       |  53424
+ prescriptions      | 107319
+ payments           | 178596
+ appointments       | 225068
+ prescription_items | 214638
+ diagnoses          | 178596
+(10 rows)
+
+ database_size 
+---------------
+ 108 MB
+(1 row)
+
