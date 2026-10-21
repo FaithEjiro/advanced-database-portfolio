@@ -1,0 +1,123 @@
+Project CarePoint {
+  database_type: 'PostgreSQL'
+  Note: 'CarePoint Family Clinic, Abuja (Wuse, Garki, Maitama)'
+}
+ 
+Table branches {
+  branch_id integer [pk, increment]
+  name varchar(50) [not null, unique]
+  address varchar(200) [not null]
+  phone varchar(20)
+}
+ 
+Table departments {
+  department_id integer [pk, increment]
+  name varchar(60) [not null, unique]
+}
+ 
+Table staff {
+  staff_id integer [pk, increment]
+  first_name varchar(50) [not null]
+  last_name varchar(50) [not null]
+  role varchar(20) [not null, note: 'Doctor, Receptionist, Lab Technician, Pharmacist, Admin']
+  specialisation varchar(60)
+  department_id integer [ref: > departments.department_id]
+  branch_id integer [not null, ref: > branches.branch_id]
+  phone varchar(20)
+  email varchar(100) [unique]
+  hire_date date [not null]
+}
+ 
+Table patients {
+  patient_id integer [pk, increment]
+  first_name varchar(50) [not null]
+  last_name varchar(50) [not null]
+  date_of_birth date [not null]
+  gender varchar(10) [not null]
+  phone varchar(20) [not null]
+  email varchar(100)
+  address varchar(200)
+  blood_group varchar(3)
+  registered_branch_id integer [not null, ref: > branches.branch_id]
+  registered_at timestamp [default: `now()`]
+}
+ 
+Table appointments {
+  appointment_id integer [pk, increment]
+  patient_id integer [not null, ref: > patients.patient_id]
+  doctor_id integer [not null, ref: > staff.staff_id]
+  branch_id integer [not null, ref: > branches.branch_id]
+  appointment_date date [not null]
+  start_time time [not null]
+  status varchar(20) [not null, default: 'Booked']
+  reason text
+  created_at timestamp [default: `now()`]
+ 
+  indexes {
+    (doctor_id, appointment_date, start_time) [unique, name: 'uq_doctor_slot']
+  }
+}
+ 
+Table diagnoses {
+  diagnosis_id integer [pk, increment]
+  appointment_id integer [not null, ref: > appointments.appointment_id]
+  icd10_code varchar(10)
+  description text [not null]
+  diagnosed_at timestamp [default: `now()`]
+}
+ 
+Table medications {
+  medication_id integer [pk, increment]
+  name varchar(100) [not null]
+  form varchar(30) [not null, note: 'Tablet, Syrup, Injection, Capsule']
+  strength varchar(30)
+  unit_price decimal(10,2) [not null]
+}
+ 
+Table prescriptions {
+  prescription_id integer [pk, increment]
+  appointment_id integer [not null, ref: > appointments.appointment_id]
+  issued_at timestamp [default: `now()`]
+  status varchar(20) [not null, default: 'Pending']
+  dispensed_by integer [ref: > staff.staff_id]
+  dispensed_at timestamp
+}
+ 
+Table prescription_items {
+  prescription_id integer [ref: > prescriptions.prescription_id]
+  medication_id integer [ref: > medications.medication_id]
+  dosage varchar(50) [not null]
+  frequency varchar(50) [not null]
+  duration_days integer [not null]
+  quantity integer [not null]
+ 
+  indexes {
+    (prescription_id, medication_id) [pk]
+  }
+}
+ 
+Table lab_tests {
+  test_id integer [pk, increment]
+  name varchar(100) [not null, unique]
+  price decimal(10,2) [not null]
+}
+ 
+Table lab_requests {
+  lab_request_id integer [pk, increment]
+  appointment_id integer [not null, ref: > appointments.appointment_id]
+  test_id integer [not null, ref: > lab_tests.test_id]
+  technician_id integer [ref: > staff.staff_id]
+  status varchar(20) [not null, default: 'Requested']
+  result text
+  requested_at timestamp [default: `now()`]
+  result_at timestamp
+}
+ 
+Table payments {
+  payment_id integer [pk, increment]
+  appointment_id integer [not null, ref: > appointments.appointment_id]
+  amount decimal(10,2) [not null]
+  method varchar(20) [not null, note: 'Cash, Card, Transfer, HMO']
+  status varchar(20) [not null, default: 'Paid']
+  paid_at timestamp [default: `now()`]
+}
