@@ -16,7 +16,7 @@ CarePoint Family Clinic is a simulated outpatient healthcare provider in Abuja, 
 | 2 | [Query Processing and Optimisation](portfolio-2-query-optimisation/README.md) | Complete | Up to **268x faster** queries after indexing ~975k rows |
 | 3 | [Transactions and Concurrency](portfolio-3-transactions-concurrency/README.md) | Complete | Double-booking and lost-update problems shown live and prevented |
 | 4 | [NoSQL and Advanced Data Models](portfolio-4-nosql/README.md) | Complete | 20,000 patient files as MongoDB documents; results match SQL exactly |
-| 5 | [Distributed and Cloud Databases](portfolio-5-distributed-cloud/README.md) | In progress | |
+| 5 | [Distributed and Cloud Databases](portfolio-5-distributed-cloud/README.md) | Complete | 3-server replica set survived a primary crash with no data loss |
  
 ## Portfolio 1: Database Design
  
@@ -70,6 +70,16 @@ Five demos, run as a script and live in two side-by-side sessions acting as staf
  
 ![MongoDB aggregations](portfolio-4-nosql/evidence/02a_m2_m3_aggregations.png)
  
+## Portfolio 5: Distributed Databases
+ 
+- **3-node MongoDB replica set** in Docker, one server per branch (Wuse, Garki, Maitama).
+- Data written to the primary was **copied to all three** automatically.
+- **Failover:** when the primary was stopped, a new primary was elected in seconds; a patient registered during the outage was kept, and the old primary caught up on return.
+- **Majority loss:** with 2 of 3 servers down, the survivor **refused writes** but still allowed reads, choosing consistency over availability (CAP theorem).
+- Sharding design discussed: hashed patient ID, with optional zone sharding by branch.
+ 
+![Failover](portfolio-5-distributed-cloud/evidence/02_failover.png)
+ 
 ## Repository structure
  
     advanced-database-portfolio/
@@ -77,5 +87,5 @@ Five demos, run as a script and live in two side-by-side sessions acting as staf
     ├── portfolio-2-query-optimisation/       seed data, queries, execution plans, indexes, chart
     ├── portfolio-3-transactions-concurrency/ stock migration, transaction script, concurrency demos
     ├── portfolio-4-nosql/                    MongoDB export, document queries, index
-    ├── portfolio-5-distributed-cloud/
+    ├── portfolio-5-distributed-cloud/        replica set setup, failover and majority-loss demos
     └── README.md                             this summary
