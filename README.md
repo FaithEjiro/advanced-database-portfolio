@@ -15,8 +15,8 @@ CarePoint Family Clinic is a simulated outpatient healthcare provider in Abuja, 
 | 1 | [Database Design and Modelling](portfolio-1-database-design/README.md) | Complete | 12-table schema in 3NF/BCNF; 7/7 constraint tests passed |
 | 2 | [Query Processing and Optimisation](portfolio-2-query-optimisation/README.md) | Complete | Up to **268x faster** queries after indexing ~975k rows |
 | 3 | [Transactions and Concurrency](portfolio-3-transactions-concurrency/README.md) | Complete | Double-booking and lost-update problems shown live and prevented |
-| 4 | [NoSQL and Advanced Data Models](portfolio-4-nosql/README.md) | In progress | |
-| 5 | [Distributed and Cloud Databases](portfolio-5-distributed-cloud/README.md) | Not started | |
+| 4 | [NoSQL and Advanced Data Models](portfolio-4-nosql/README.md) | Complete | 20,000 patient files as MongoDB documents; results match SQL exactly |
+| 5 | [Distributed and Cloud Databases](portfolio-5-distributed-cloud/README.md) | In progress | |
  
 ## Portfolio 1: Database Design
  
@@ -61,12 +61,21 @@ Five demos, run as a script and live in two side-by-side sessions acting as staf
  
 - **Finding:** an application's "is it free?" check is never enough when two users act at once; database constraints and locks are the real protection. Constraints alone cannot stop a lost update, because the wrong value written can still be a valid one.
  
+## Portfolio 4: NoSQL (MongoDB)
+ 
+- Each patient stored as **one document** with visits, diagnoses, prescriptions, lab tests and payments nested inside (20,000 documents, 0 import failures).
+- MongoDB queries gave **exactly the same results** as the PostgreSQL queries (72 positive malaria tests; identical top diagnoses).
+- Phone index: documents examined dropped from **20,000 to 1** (`COLLSCAN` to `IXSCAN`).
+- **Finding:** documents suit reading a whole patient file and data that varies between patients; PostgreSQL stays better for bookings, stock and cross-patient reports.
+ 
+![MongoDB aggregations](portfolio-4-nosql/evidence/02a_m2_m3_aggregations.png)
+ 
 ## Repository structure
  
     advanced-database-portfolio/
     ├── portfolio-1-database-design/          ER diagram, schema, normalisation, constraint tests
     ├── portfolio-2-query-optimisation/       seed data, queries, execution plans, indexes, chart
     ├── portfolio-3-transactions-concurrency/ stock migration, transaction script, concurrency demos
-    ├── portfolio-4-nosql/
+    ├── portfolio-4-nosql/                    MongoDB export, document queries, index
     ├── portfolio-5-distributed-cloud/
     └── README.md                             this summary
