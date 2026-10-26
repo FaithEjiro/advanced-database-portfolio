@@ -1,0 +1,188 @@
+
+===== M1: Patient history by phone (one document, no joins) =====
+{
+  _id: 1234,
+  name: {
+    first: 'Zainab',
+    last: 'Adebayo'
+  },
+  contact: {
+    phone: '07030001234',
+    email: 'patient1234@example.com',
+    address: 'Lugbe, Abuja'
+  },
+  registered_branch: 'Garki',
+  visits: [
+    {
+      appointment_id: 198143,
+      date: ISODate('2026-08-24T10:00:00.000Z'),
+      branch: 'Garki',
+      doctor: {
+        name: 'Uche Bello',
+        specialisation: 'Paediatrics'
+      },
+      status: 'Completed',
+      reason: 'Body pains',
+      diagnosis: {
+        icd10: 'A01.0',
+        description: 'Typhoid fever'
+      },
+      prescriptions: [
+        {
+          status: 'Dispensed',
+          items: [
+            {
+              drug: 'Amoxicillin',
+              strength: '500mg',
+              dosage: '1 dose',
+              frequency: 'Twice daily',
+              quantity: 10
+            },
+            {
+              drug: 'Ceftriaxone',
+              strength: '1g',
+              dosage: '1 dose',
+              frequency: 'Once daily',
+              quantity: 3
+            }
+          ]
+        }
+      ],
+      payment: {
+        amount: 5000,
+        method: 'Transfer'
+      }
+    },
+    {
+      appointment_id: 214704,
+      date: ISODate('2026-11-11T14:30:00.000Z'),
+      branch: 'Maitama',
+      doctor: {
+        name: 'Chinedu Usman',
+        specialisation: 'Dermatology'
+      },
+      status: 'Booked',
+      reason: 'Cough and cold'
+    }
+  ]
+}
+Total visits for this patient: 9
+
+===== M2: Positive malaria tests, last 30 days (compare SQL Q7) =====
+Results found: 72 (SQL Q7 found 72)
+[
+  {
+    date: ISODate('2026-10-21T10:30:00.000Z'),
+    branch: 'Maitama',
+    patient: 'Zainab Okonkwo',
+    test: 'Malaria parasite microscopy'
+  },
+  {
+    date: ISODate('2026-10-21T09:30:00.000Z'),
+    branch: 'Maitama',
+    patient: 'Obinna Garba',
+    test: 'Malaria parasite microscopy'
+  },
+  {
+    date: ISODate('2026-10-20T15:30:00.000Z'),
+    branch: 'Wuse',
+    patient: 'Zainab Olawale',
+    test: 'Malaria RDT'
+  },
+  {
+    date: ISODate('2026-10-20T14:30:00.000Z'),
+    branch: 'Wuse',
+    patient: 'Tunde Garba',
+    test: 'Malaria RDT'
+  },
+  {
+    date: ISODate('2026-10-20T12:30:00.000Z'),
+    branch: 'Wuse',
+    patient: 'Halima Mohammed',
+    test: 'Malaria RDT'
+  }
+]
+
+===== M3: Top 5 diagnoses of 2025 (compare SQL Q4) =====
+[
+  {
+    _id: 'K29.7',
+    description: 'Gastritis',
+    cases: 6435
+  },
+  {
+    _id: 'L30.9',
+    description: 'Dermatitis',
+    cases: 6409
+  },
+  {
+    _id: 'E11.9',
+    description: 'Type 2 diabetes mellitus',
+    cases: 6407
+  },
+  {
+    _id: 'A01.0',
+    description: 'Typhoid fever',
+    cases: 6402
+  },
+  {
+    _id: 'I10',
+    description: 'Essential hypertension',
+    cases: 6398
+  }
+]
+
+===== M4: Flexible fields (exist only when needed) =====
+{
+  totalPatients: 20000,
+  withInsuranceField: 16667,
+  withoutEmailField: 7905,
+  withBloodGroupField: 20000
+}
+
+===== M5: Change structure without ALTER TABLE =====
+{
+  _id: 1234,
+  name: {
+    first: 'Zainab',
+    last: 'Adebayo'
+  },
+  visits: [
+    {
+      appointment_id: 999999,
+      date: ISODate('2026-11-05T10:00:00.000Z'),
+      branch: 'Wuse',
+      status: 'Booked',
+      reason: 'Follow-up'
+    }
+  ],
+  allergies: [
+    'Penicillin',
+    'Sulfa drugs'
+  ]
+}
+Patients with an allergies field: 1
+
+===== M6: Phone search BEFORE index =====
+{
+  plan: 'COLLSCAN',
+  documentsReturned: 1,
+  documentsExamined: 20000,
+  timeMs: 12
+}
+
+===== M6: Phone search AFTER index =====
+{
+  plan: 'FETCH <- IXSCAN',
+  documentsReturned: 1,
+  documentsExamined: 1,
+  timeMs: 1
+}
+
+===== M7: Storage =====
+{
+  documents: 20000,
+  dataSizeMB: '97.0',
+  storageOnDiskMB: '20.6',
+  averageDocumentKB: '5.0'
+}
