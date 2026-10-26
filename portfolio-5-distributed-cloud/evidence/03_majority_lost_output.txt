@@ -1,0 +1,21 @@
+===== 1. Stopping carepoint-rs2 and carepoint-rs3 (2 of 3 down) =====
+carepoint-rs2
+carepoint-rs3
+===== 2. Status seen by the only survivor (rs1) =====
+[
+  'carepoint-rs1:27017  SECONDARY',
+  'carepoint-rs2:27017  (not reachable/healthy)',
+  'carepoint-rs3:27017  (not reachable/healthy)'
+]
+===== 3. Trying to register a patient on rs1 =====
+WRITE REFUSED: NotWritablePrimary - not primary
+===== 4. Reading still works =====
+Patients readable on rs1: 20001
+===== 5. Restarting rs2 and rs3 =====
+carepoint-rs2
+carepoint-rs3
+[
+  'carepoint-rs1:27017  PRIMARY',
+  'carepoint-rs2:27017  SECONDARY',
+  'carepoint-rs3:27017  SECONDARY'
+]

@@ -1,0 +1,3 @@
+carepoint-rs1: 20000
+carepoint-rs2: 20000
+carepoint-rs3: 20000
